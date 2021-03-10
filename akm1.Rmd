@@ -1,0 +1,173 @@
+#################################################################################################
+Aplikované kvantitativní metody
+Domáca úloha 1
+
+#################################################################################################
+Príklad 1
+
+```{r}
+swissData <- swiss
+head(swiss)
+```
+
+- nasledujúce vizualizácie nie sú súčasťou zadania domácej úlohy, slúžia len ako podporné informácie na zobrazenie vzťahov medzi rôznymi regresormi a         vysvetlovanou premennou, ktoré budú použité na vhodné zostavenie modelu
+
+```{r}
+library(ggplot2)
+ggplot(swissData, aes(Education, Fertility)) +
+  geom_point() +
+  geom_smooth(method = lm)
+```
+```{r}
+ggplot(swissData, aes(Agriculture, Fertility)) +
+  geom_point() +
+  geom_smooth(method = lm)
+```
+```{r}
+ggplot(swissData, aes(Examination, Fertility)) +
+  geom_point() +
+  geom_smooth(method = lm)
+```
+```{r}
+ggplot(swissData, aes(Catholic, Fertility)) +
+  geom_point() +
+  geom_smooth(method = lm)
+```
+```{r}
+ggplot(swissData, aes(Infant.Mortality, Fertility)) +
+  geom_point() +
+  geom_smooth(method = lm)
+```
+```{r}
+plot(density(swissData$Fertility), main = "Fertility")
+rug(swissData$Fertility)
+hist(swiss$Fertility, main = "Fertility", xlab = "Fertility")
+boxplot(swissData)
+pairs(swissData)
+```
+
+#################################################################################################
+1.a: Zostavte vhodný model s vysvetlovanou premennou fertility a odhadnite neznáme parametre.
+
+
+```{r}
+# iniciálny model so všetkými potenciálnymi regresormi
+lrModelAllVar <- lm(Fertility ~ Agriculture + Examination + Education + Catholic + Infant.Mortality, data = swissData)
+summary(lrModelAllVar)
+```
+```{r}
+# finálny model bez nevýznamnej premennej Examination
+lrModelFinal <- step(lrModelAllVar, trace = FALSE)
+summary(lrModelFinal)
+```
+Finálny model: fertility ~ agriculture + education + catholic + infant mortality
+               fert_hat = 62.10131 - 0.15462 x agricul - 0.98026 x educ + 0.12467 x Catholic + 1.07844 x infMort + rezidua
+               
+#################################################################################################
+1.b: Štatisticky verifikujte odhadnuté parametre.
+- štatistická verifikácia odhadnutých parametrov založená na testovej štatistike (t-test) so Študentovým rozdelením s (n - k) stupňami voľnosti
+- testujeme parametre beta_i, pričom i = 1,...,k
+- nulová hypotéza H0: beta_i = 0
+- alternatíva H1: beta_i != 0
+- zamietame nulovú hypotézu, že beta_i = 0 pre všetky odhadnuté parametre vo finálnom modeli lrModelFinal, pretože p-hodnota t-testov všetkých parametrov je   nižšia ako 5% hladina významnosti (0.05), na ktorej boli všetky t-testy robené
+- takže, parametre beta_i (i = 1,...,k) z finálneho modelu lrModelFinal sú štatisticky významné
+
+
+#################################################################################################
+1.c: ekonomicky verifikujte a interpretujte odhadnuté parametre.
+- pri náraste počtu mužov zamestnaných v poľnohospodárstve o 1%, môžeme v priemere očakávať, že sa fertilita zníži o 0.15462 Ig (Ig = štandardizovaná         veličina fertility, v ktorej sú vyjadrené hodnoty v našom datasete)
+- pri náraste počtu vzdelaných ľudí za hranicou základnej školy o 1%, môžeme v priemere očakávať, že sa fertilita zníži o 0.98026 Ig
+- pri náraste počtu ľudí hlásiacich sa ku katolíckemu vierovyznaniu o 1%, môžeme v priemere očakávať, že sa fertilita zvýši o 0.12467 Ig
+- pri náraste detskej úmrtnosti (v našom datasete % živo narodených detí, ktoré sa nedožijú jedného roka, z celkového počtu živo narodených detí) o 1%,        môžeme v priemere očakávať, že sa fertilita zvýši o 1.07844 Ig
+
+
+#################################################################################################
+1.d: zhodnoťte štatistickú významnosť celého modelu príslušným testom. Aké sú jeho hypotézy?
+- štatistická významnosť na základe F-testu
+- nulová hypotéza H0: každý parameter modelu je rovný 0 (model je štatisticky nevýznamný)
+- alternatíva H1: non H0 (model ako celok je štatisticky významný - apoň jeden jeho parameter je štatisticky významný)
+- zamietame nulovú hypotézu, že model je štatisticky nevýznamný, pretože na 5% hladine významnosti (0.05) hodnota F-testu prekročila kritický kvantil
+- takže, model lrModelFinal ako celok je štatisticky významný
+
+
+#################################################################################################
+1.e: v modeli otestujte homoskedasticitu. Stanovte hypotézy a výsledky interpretujte.
+- nulová hypotéza H0: homoskedasticita (rozptyl reziduí je konštantný)
+- alternatíva H1: heteroskedasticita (rozptyl reziduí nie je konštantný, ale mení sa spolu s meniacimi sa hodnotami regresorov)
+- Breusch-Pagan test
+
+```{r}
+resids <- lrModelFinal$residuals
+testBP <- lm(resids^2 ~ Agriculture + Education + Catholic + Infant.Mortality, data = swissData)
+summary(testBP)
+```
+- nemôžeme zamietnuť nulovú hypotézu o homoskedasticite, pretože p-hodnota testu je vyššia ako 5% hladina významnosti (0.05), na ktorej bol test robený
+
+- grafické zobrazenie pre kontrolu homoskedasticity/heteroskedasticty:
+```{r}
+par(mfrow = c(2, 2))
+plot(lrModelFinal)
+```
+... dôvod, pre ktorý sme nemohli zamietnuť nulovú hypotézu o homoskedasticite, je možné vidieť na vyššie zobrazených grafoch - rezidua majú približne rovnaký rozptyl pozdĺdž celej regresnej priamky, a preto sa dá usúdiť, že heteroskedasticita nie je prítomná 
+
+#################################################################################################
+1.f: zostavte model s rovnakým rovnicovým tvarom ako v časti a., ale vynechajte mestské časti s nízkym podielom mužov v poľnohospodárstve (hranicu stanovte na 25% a viac)
+
+```{r}
+library(dplyr)
+swissDataOver25 <- swissData %>% filter(Agriculture > 25) 
+lrModelOver25 <- lm(Fertility ~ Agriculture + Education + Catholic + Infant.Mortality, data = swissDataOver25)
+summary(lrModelOver25)
+```
+
+#################################################################################################
+1.g: výsledky modelu v bode f. porovnajte s výsledkami modelu z bodu a. Porovnajte štatistickú a ekonomickú významnosť.
+- model lrModelOver25 ako celok je štatisticky významný rovnako ako model lrModelFinal
+- avšak regresor Agriculture a Infant.Mortality sú menej štatisticky významné ako v prvom modeli 
+- možné ekonomické zdôvodnenie: mestské časti s nízkym podielom mužov v poľnohospodárstve môžu byť považované za viac rozvinuté časti (viac ľudí v            priemysle), takže v prípade, že ich vynecháme, ako v prípade modelu lrModelOver25, docielime to, že vynecháme časti s nižšou fertilitou, ktorá je           charakteristická pre viac rozvinutú spločnosť, a teda regresor Agriculture ako determinant vzťahu medzi podielom mužov v poľnohospodárstve a fertilitou     stratí štatistickú a ekonomickú významnosť
+
+
+#################################################################################################
+Príklad 2
+Nasimulujte 10000 pozorovaní podľa nasledujúceho zadania. Navoľte si set.seed().
+
+- nasimulujte mzdy: wage = 5 + 10 x IQ + 2 x educ + 3 x uni + 6 x exper + eps
+- náhodná zložka eps pochádza z normálneho rozdelenia so strednou hodnotou 0 a rozptylom 640 (std = 25 (po zaokrúhlení na celé čísla))
+- premenná IQ pochádza z normálneho rozdelenia so strednou hodnotou 90 a rozptylom 1000 (std = 32 (po zaokrúhlení na celé čísla))
+- premenná educ popisuje vzdelanie a pochádza z rovnomerného rozdelenia na intervale 9 až 20
+- pre premennú uni platí, že: uni = educ - 13
+- premenná exper popisuje skúsenosti a pochádza z rovnomerného rozdelenia na intervale 0 až 40
+
+Na základe nasimulovaných dát odhadnite funkciu: wage = beta_0 + beta_1 x IQ + beta_2 x educ + beta_3 x uni + beta_4 x exper + eps 
+
+```{r}
+set.seed(1)
+N <- 10000
+eps <- rnorm(N, 0, 25)
+IQ <- rnorm(N, 90, 32)
+educ <- runif(N, min = 9, max = 20)
+exper <- runif(N, min = 0, max = 40)
+uni <- educ - 13
+wage <- 5 + 10*IQ + 2*educ + 3*uni + 6*exper + eps
+ppltn <- data.frame(IQ, educ, uni, exper, wage)
+lrModelSim <- lm(wage ~ IQ + educ + uni + exper, data = ppltn)
+summary(lrModelSim)
+```
+#################################################################################################
+2.a: interpretujte odhady koeficientov príslušných premenných educ a exper
+
+- Interpretácia koeficientu pri premennej educ: ak vzrastie premenná educ o 1 (1 rok vzdelania naviac), tak v priemere môžeme očakávať, že wage sa zvýši      o 4.873439 peňažných jednotiek
+- Interpretácia koeficientu pri premennej exper: ak sa zvýši premenná exper o 1 (1 rok praktickej skúsenosti naviac), tak v priemere môžeme očakávať, že      wage sa zvýši o 6.035697 peňažných jednotiek
+- pri premennej uni je koeficient NA kvôli tomu, že medzi premennými educ a uni existuje dokonalá multikolinearita, preto Rko jeden z týchto regresorov zo    svojho odhadu úplne vynechá
+
+
+#################################################################################################
+2.b: Interpretujte koeficient determinácie
+
+- R_squared = 0.994 - modelom sa podarilo vysvetliť 99.4% rozptylu vysvetlovanej premennej
+
+
+#################################################################################################
+2.c: Zhodnoťte významnosť modelu ako celku
+
+- model ako celok je štatisticky významný, pretože p-hodnota jeho F-testu je nižšia ako 5% hladina významnosti (0.05), na ktorej bol F-test robený.           Alternatívne, model ako celok je štatisticky významný, pretože p-hodnoty t-testov všetkých jeho parametrov sú nižie ako 5% hladina významnosti (0.05), na   ktorej boli t-testy robené
